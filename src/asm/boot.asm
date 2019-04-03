@@ -91,5 +91,5 @@ check_long_mode:
 
 section .bss
 stack_bottom:
-    resb 65536
+    resb 0x100000
 stack_top:

@@ -28,7 +28,7 @@ run: $(iso)
 	qemu-system-x86_64 -s -cdrom $(iso)
 
 debug: $(iso)
-	x-terminal-emulator -e gdb -x src/debug_script
+	x-terminal-emulator -e $(cross_compiler)/bin/x86_64-elf-gdb -x src/debug_script &
 	qemu-system-x86_64 -S -s -cdrom $(iso)
 
 iso: $(iso)
@@ -53,7 +53,7 @@ build/asm/%.o: src/asm/%.asm
 
 # compile c files
 build/%.o: src/%.c
-	$(cross_compiler)/bin/x86_64-elf-gcc -g -c $< -o $@
+	$(cross_compiler)/bin/x86_64-elf-gcc -g -std=c99 -c $< -o $@
 
 
 image: $(fat_img)
