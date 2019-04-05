@@ -11,7 +11,7 @@ void *memset1(void *s, int c, unsigned int n)
     return s;
 }
 
-void *memcpy1(void *dest, const void *src, unsigned int n)
+void *memmove1(void *dest, const void *src, unsigned int n)
 {
     const unsigned char *srcBytes = (unsigned char *)src;
     unsigned char *destBytes = (unsigned char *)dest;
