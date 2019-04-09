@@ -2,7 +2,12 @@
 #include "keyboard.h"
 
 #define WHITE_TXT 0x07
-//static unsigned int *vgaBuff = (unsigned int*)0xb8000;
+
+void wait()
+{
+    int i = 900000;
+    while(i) i--;
+}
 
 void kmain()
 {
@@ -56,8 +61,20 @@ void kmain()
     printk("Testing signed short: %hd\n", sh);
 
 
+    int i, j;
+    for(j = 0; j < 40; j++){
+        for(i = 0; i < 10+j; i ++){
+            printk("#");
+            //wait();
+        }
+        printk("\n");
+    }
+
     initializeKeyboard();
     while(1){
-        printk("%c", getKey());
+        unsigned char c = getKey();
+        printk("%c", c);
     }
+
+    
 }

@@ -3,7 +3,8 @@
 void *memset1(void *s, int c, unsigned int n)
 {
     unsigned char *mem = (unsigned char *)s;
-    for(int i = 0; i < n; i ++)
+    int i;
+    for(i = 0; i < n; i ++)
     {
         mem[i] = c;
     }
@@ -15,14 +16,15 @@ void *memmove1(void *dest, const void *src, unsigned int n)
 {
     const unsigned char *srcBytes = (unsigned char *)src;
     unsigned char *destBytes = (unsigned char *)dest;
+    int i;
 
     if(dest > src){
-        for(int i = n-1; i >=0; i--){
+        for(i = n-1; i >=0; i--){
             destBytes[i] = srcBytes[i];
         }
     }
     else{
-        for(int i = 0; i < n; i++){
+        for(i = 0; i < n; i++){
             destBytes[i] = srcBytes[i];
         }
     }

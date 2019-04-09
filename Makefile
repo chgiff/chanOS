@@ -54,7 +54,7 @@ build/asm/%.o: src/asm/%.asm
 
 # compile c files
 build/%.o: src/%.c
-	$(cross_compiler)/bin/x86_64-elf-gcc -g -Wall -Werror -c $< -o $@
+	$(cross_compiler)/bin/x86_64-elf-gcc -g -Wall -Werror -ffreestanding -mno-red-zone -c $< -o $@
 
 
 image: $(fat_img)

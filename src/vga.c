@@ -15,19 +15,27 @@ static unsigned int cursor = 0;
 void VGA_display_char(char c)
 {
     int lines;
+    int i;
     if (c == '\n') {
         cursor = ((cursor/width) + 1) * width;
         if (cursor >= width*height){
             lines = cursor/width - height + 1;
             memmove1((void*)vgaBuff, (void*)(&vgaBuff[lines*width]), (height-lines)*width*2);
-            for(int i = (height-lines)*width; i < width*height; i ++){
+            for(i = (height-lines)*width; i < width*height; i ++){
                 vgaBuff[i] = 0x0720;
             }
             cursor -= (lines * width);
         }
     }
-    else if (c == '\r')
+    else if (c == '\r'){
         cursor = (cursor/width) * width;
+    }
+    else if (c == '\b'){
+        if((cursor % width) > 0){
+            cursor--;
+            vgaBuff[cursor] = ' ';
+        }
+    }
     else {
         vgaBuff[cursor] = 0x0700 | c;
         if((cursor % width) < (width - 1)){
@@ -54,7 +62,8 @@ void VGA_display_str(const char *str)
 
 void VGA_clear()
 {
-    for(int i = 0; i < width*height; i ++){
+    int i;
+    for(i = 0; i < width*height; i ++){
         vgaBuff[i] = 0x0720;
     }
 }
@@ -94,8 +103,9 @@ int printk(const char *fmt, ...)
     va_list args;
     va_start(args, fmt);
     int printedChars = 0;
+    int i;
 
-    for(int i = 0; fmt[i]; i++){
+    for(i = 0; fmt[i]; i++){
         if(fmt[i] == '%'){
             i++;
             switch(fmt[i]){
