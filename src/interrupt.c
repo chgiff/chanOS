@@ -3,6 +3,7 @@
 #include "asm/interrupt_gen.h"
 #include "stdint.h"
 #include "vga.h"
+#include "gdt.h"
 
 //PIC #defines
 #define PIC1		0x20		/* IO base address for master PIC */
@@ -30,6 +31,8 @@
 #define PIC2_BASE 0x2F
 
 #define IDT_SIZE 256
+
+#define FLAGS_INTERRUPT_BIT (1 << 9)
 
 struct IDT_element
 {
@@ -63,6 +66,14 @@ struct IRQ_handler_element {
 struct IRQ_handler_element irq_handlers[IDT_SIZE];
 
 extern void idt_load();
+
+char areInterruptsEnabled()
+{
+    uint64_t flag;
+    asm volatile ( "pushf; pop %0" : "=a"(flag));
+    if(flag & FLAGS_INTERRUPT_BIT) return 1;
+    return 0;
+}
 
 void PIC_remap(int offset1, int offset2)
 {
@@ -107,8 +118,8 @@ void IRQ_init()
         IDT[i].funcPtrMid = handlerAddr >> 16;
         IDT[i].funcPtrUpper = handlerAddr >> 32;
 
-        IDT[i].gdtSelector = 8; //TODO
-        IDT[i].stackTableIndex = 0;
+        IDT[i].gdtSelector = getCodeOffset();
+        IDT[i].stackTableIndex = getTssInterruptStack();
         IDT[i].reserved1 = 0; //TODO
         IDT[i].interruptGate = 0;
 
@@ -118,6 +129,11 @@ void IRQ_init()
         IDT[i].present = 1;
         IDT[i].reserved2 = 0; //TODO
     }
+
+    //special exceptions that have their own stack
+    IDT[0x8].stackTableIndex = getTssDFStack(); //double fault
+    IDT[0xD].stackTableIndex = getTssGPStack(); //general protection fault
+    IDT[0xE].stackTableIndex = getTssPFStack(); //page fault
 
     
     idtp.base = (uint64_t)&IDT;
@@ -198,6 +214,7 @@ void isr_c(uint64_t interrupt, uint64_t errorCode)
     }
     else{
         printk("Unhandled interupt: %lu\n", interrupt);
+        asm("hlt");
     }
 
     //ack

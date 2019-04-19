@@ -1,6 +1,7 @@
 #include "vga.h"
 #include "keyboard.h"
 #include "interrupt.h"
+#include "gdt.h"
 
 #define WHITE_TXT 0x07
 
@@ -15,9 +16,12 @@ void kmain()
     //char loop = 0;
     //while(!loop);
 
-    IRQ_init();
-    initializeKeyboard();
+    init_gdt();
+
     IRQ_set_handler(33, &keyboardISR, (void *)0);
+    initializeKeyboard();
+
+    IRQ_init();
 
     VGA_clear();
 
@@ -74,12 +78,10 @@ void kmain()
     }
     */
 
-   //int a;
+    VGA_display_char('-');
+
+   
     while(1){
-        unsigned char c = getKey();
-        printk("err: %c", c);
-        //a++;
         asm("hlt");
     }
-    //printk("%d", a);
 }

@@ -1,6 +1,9 @@
 global long_mode_start
 extern kmain
 
+global gdt_load
+extern gdtp
+
 section .text
 bits 64
 long_mode_start:
@@ -15,3 +18,9 @@ long_mode_start:
     call kmain
 
     hlt
+
+gdt_load:
+    lgdt [gdtp]
+    jmp .flush   ; 0x08 is the offset to our code segment: Far jump!
+.flush:
+   ret

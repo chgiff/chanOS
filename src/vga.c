@@ -15,13 +15,13 @@ void VGA_display_char(char c)
 {
     int lines;
     int i;
-    //int enableInterupts = 0;
+    int enableInterupts = 0;
 
 
-   // if(areInteruptsEnabled()){
-   //     enableInterupts = 1;
+    if(areInterruptsEnabled()){
+        enableInterupts = 1;
         CLI;
-   // }
+    }
 
     if (c == '\n') {
         cursor = ((cursor/width) + 1) * width;
@@ -52,9 +52,9 @@ void VGA_display_char(char c)
     
     if(cursor >= width*height) cursor = 0;
 
-   // if(enableInterupts){
+    if(enableInterupts){
         STI;
-    //}
+    }
 }
 
 
