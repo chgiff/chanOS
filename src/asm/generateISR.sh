@@ -1,10 +1,23 @@
-FILENAME="interupt_gen.asm"
+FILENAME=$(dirname $0)"/interrupt_gen.asm"
 
 echo "extern isr_normal"  > $FILENAME
+echo "extern isr_error" >> $FILENAME
 
-#handle error interupts
+for((i=0; i<=255; i++));
+do
+    echo "global irq$i" >> $FILENAME
+done
+
+#handle error interrupts
 i=8
     echo "irq$i:" >> $FILENAME
+
+    # echo "mov dword [0xb8000], 0x4f524f45" >> $FILENAME
+    # echo "mov dword [0xb8004], 0x4f3a4f52" >> $FILENAME
+    # echo "mov dword [0xb8008], 0x4f204f45" >> $FILENAME
+    # echo "mov dword [0xb8010], 0x4f524f45" >> $FILENAME
+    # echo "hlt" >> $FILENAME
+
     echo "   push rdi" >> $FILENAME
     echo "   push rsi" >> $FILENAME
     echo "   mov rdi, $i" >> $FILENAME
@@ -13,17 +26,33 @@ i=8
 for((i=10; i<=14; i++));
 do
     echo "irq$i:" >> $FILENAME
+
+
+    # echo "mov dword [0xb8000], 0x4f524f45" >> $FILENAME
+    # echo "mov dword [0xb8004], 0x4f3a4f52" >> $FILENAME
+    # echo "mov dword [0xb8008], 0x4f204f20" >> $FILENAME
+    # echo "mov dword [0xb8020], 0x4f524f45" >> $FILENAME
+    # echo "hlt" >> $FILENAME
+
     echo "   push rdi" >> $FILENAME
     echo "   push rsi" >> $FILENAME
     echo "   mov rdi, $i" >> $FILENAME
-    echo "   mov rsi, [rsp+12]" #TODO sp+12
+    echo "   mov rsi, [rsp+12]" >> $FILENAME #TODO sp+12
     echo "   jmp isr_error" >> $FILENAME
 done
 
-#handle normal interupts
+#handle normal interrupts
 for((i=0; i<=7; i++));
 do
     echo "irq$i:" >> $FILENAME
+
+    # echo "mov dword [0xb8000], 0x4f524f45" >> $FILENAME
+    # echo "mov dword [0xb8004], 0x4f3a4f52" >> $FILENAME
+    # echo "mov dword [0xb8008], 0x4f204f52" >> $FILENAME
+    # echo "mov dword [0xb8030], 0x4f524f45" >> $FILENAME
+    # echo "hlt" >> $FILENAME
+
+
     echo "   push rdi" >> $FILENAME
     echo "   mov rdi, $i" >> $FILENAME
     echo "   jmp isr_normal" >> $FILENAME
@@ -31,6 +60,14 @@ done
 for((i=9; i<=9; i++));
 do
     echo "irq$i:" >> $FILENAME
+
+
+    # echo "mov dword [0xb8000], 0x4f524f45" >> $FILENAME
+    # echo "mov dword [0xb8004], 0x4f3a4f52" >> $FILENAME
+    # echo "mov dword [0xb8008], 0x4f204f3a" >> $FILENAME
+    # echo "mov dword [0xb8040], 0x4f524f45" >> $FILENAME
+    # echo "hlt" >> $FILENAME
+
     echo "   push rdi" >> $FILENAME
     echo "   mov rdi, $i" >> $FILENAME
     echo "   jmp isr_normal" >> $FILENAME
@@ -38,15 +75,23 @@ done
 for((i=15; i<=255; i++));
 do
     echo "irq$i:" >> $FILENAME
+
+
+    # echo "mov dword [0xb8000], 0x4f524f45" >> $FILENAME
+    # echo "mov dword [0xb8004], 0x4f3a4f52" >> $FILENAME
+    # echo "mov dword [0xb8008], 0x4f204f3a" >> $FILENAME
+    # echo "mov dword [0xb800c], 0x4f204f3a" >> $FILENAME
+    #echo "hlt" >> $FILENAME
+
     echo "   push rdi" >> $FILENAME
     echo "   mov rdi, $i" >> $FILENAME
     echo "   jmp isr_normal" >> $FILENAME
 done
 
 #generate the header file for c
-FILENAME=interupt_gen.h
-echo "#ifndef INTERUPT_GEN_H" > $FILENAME
-echo "#define INTERUPT_GEN_H" >> $FILENAME
+FILENAME=$(dirname $0)"/interrupt_gen.h"
+echo "#ifndef INTERRUPT_GEN_H" > $FILENAME
+echo "#define INTERRUPT_GEN_H" >> $FILENAME
 
 for((i=0; i<=255; i++));
 do

@@ -1,7 +1,6 @@
-
-#define OUT_BUFF_STATUS 0x01
-#define IN_BUF_STATUS 0x02
-
+#include "keyboard.h"
+#include "memory.h"
+#include "vga.h"
 
 char asccode[58][2] =       /* Array containing ascii codes for
 			       appropriate scan codes */
@@ -66,31 +65,55 @@ char asccode[58][2] =       /* Array containing ascii codes for
        { ' ',' ' } ,
    };
 
+//ps/2 ports
+#define PS2_DATA_PORT 0x60
+#define PS2_COMMAND_PORT 0x64
+#define PS2_STATUS_PORT 0x64
+
+#define OUT_BUFF_STATUS 0x01
+#define IN_BUF_STATUS 0x02
+
+//ps/2 commands
+#define CMD_DISABLE_PS2_PORT_1 0xAD
+#define CMD_ENABLE_PS2_PORT_1 0xAE
+#define CMD_DISABLE_PS2_PORT_2 0xA7
+#define CMD_ENABLE_PS2_PORT_2 0xA8
+#define CMD_READ_BYTE_0 0x20
+#define CMD_WRITE_BYTE_0 0x60
+
+//ps/2 config bytes
+#define FLAG_PS2_PORT_1_INTERRUPT 0x01
+#define FLAG_PS2_PORT_2_INTERRUPT 0x02
+#define FLAG_PS2_PORT_1_CLOCK 0x10
+#define FLAG_PS2_PORT_2_CLOCK 0x20
+#define FLAG_PS2_PORT_1_TRANSLATION 0x40
+
+//keyboard commands
+#define CMD_RESET_KEYBOARD 0xFF
+#define CMD_SET_SCANCODE 0xF0
+#define CMD_ENABLE_SCANNING 0xF4
+#define RESP_RESEND 0xFE
+
 char getStatus()
 {
-    char status;
-    asm volatile ("in $0x64, %0" : "=a" (status));
-    return status;
+    return inb(PS2_STATUS_PORT);
 }
 
 void sendCommand(char command)
 {
-    while(getStatus() & IN_BUF_STATUS); //wait until ready for input
-    asm volatile ("out %0, $0x64" :: "a" (command));
+    outb(PS2_COMMAND_PORT, command);
 }
 
 char readData()
 {
     while(!(getStatus() & OUT_BUFF_STATUS)); //wait for data to be ready
-    char data;
-    asm volatile ("in $0x60, %0" : "=a" (data));
-    return data;
+    return inb(PS2_DATA_PORT);
 }
 
 void writeData(char data)
 {
     while(getStatus() & IN_BUF_STATUS); //wait until ready for input
-    asm volatile ("out %0, $0x60" :: "a" (data));
+    outb(PS2_DATA_PORT, data);
 }
 
 void initializeKeyboard()
@@ -104,31 +127,43 @@ void initializeKeyboard()
     */
     char resp;
 
-    sendCommand(0xAD);
-    sendCommand(0xA7);
-    sendCommand(0x20);
+    sendCommand(CMD_DISABLE_PS2_PORT_1);
+    sendCommand(CMD_DISABLE_PS2_PORT_2);
+
+    sendCommand(CMD_READ_BYTE_0);
     char config = readData();
 
-    config |= 0x11; //turn on first ps/2 port
-    config &= (~0x22); //turn off second ps/2 port
+    config |= (FLAG_PS2_PORT_1_CLOCK | FLAG_PS2_PORT_1_INTERRUPT); //turn on first ps/2 port
+    config &= ~(FLAG_PS2_PORT_2_CLOCK | FLAG_PS2_PORT_2_INTERRUPT); //turn off second ps/2 port
 
-    sendCommand(0x60);
+    sendCommand(CMD_WRITE_BYTE_0);
     writeData(config);
 
+    sendCommand(CMD_ENABLE_PS2_PORT_1);
 
     //reset keyboard
-    writeData(0xFF);
+    writeData(CMD_RESET_KEYBOARD);
     resp = readData(); //TODO receive response
 
     //set scan set 1
-    writeData(0xF0);
+    writeData(CMD_SET_SCANCODE);
     writeData(0x01);
     resp = readData(); //TODO receive ACK
 
     //turn on scan codes
-    writeData(0xF4);
-    resp = readData(); //TODO receive ACK
-    while(resp == 0xFE) resp = readData();
+    writeData(CMD_ENABLE_SCANNING);
+    resp = readData(); //receive ACK
+    while(resp == RESP_RESEND)
+    {
+        writeData(CMD_ENABLE_SCANNING);
+        resp = readData();
+    }
+}
+
+
+void setKeyboardInterrupts(char on)
+{
+
 }
 
 unsigned char getKey()
@@ -140,4 +175,14 @@ unsigned char getKey()
         c = asccode[code][0];
     }while(!c);
     return c;
+}
+
+
+void keyboardISR(int interrupt, int error, void *data)
+{
+    unsigned char code;
+    code = readData();
+    if(code < 58){
+        VGA_display_char(asccode[code][0]);
+    }
 }

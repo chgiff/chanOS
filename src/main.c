@@ -1,5 +1,6 @@
 #include "vga.h"
 #include "keyboard.h"
+#include "interrupt.h"
 
 #define WHITE_TXT 0x07
 
@@ -13,8 +14,10 @@ void kmain()
 {
     //char loop = 0;
     //while(!loop);
-    
 
+    IRQ_init();
+    initializeKeyboard();
+    IRQ_set_handler(33, &keyboardISR, (void *)0);
 
     VGA_clear();
 
@@ -60,7 +63,7 @@ void kmain()
     short sh = -45;
     printk("Testing signed short: %hd\n", sh);
 
-
+    /*
     int i, j;
     for(j = 0; j < 40; j++){
         for(i = 0; i < 10+j; i ++){
@@ -69,12 +72,14 @@ void kmain()
         }
         printk("\n");
     }
+    */
 
-    initializeKeyboard();
+   //int a;
     while(1){
         unsigned char c = getKey();
-        printk("%c", c);
+        printk("err: %c", c);
+        //a++;
+        asm("hlt");
     }
-
-    
+    //printk("%d", a);
 }

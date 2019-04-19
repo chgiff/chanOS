@@ -35,3 +35,8 @@
 *.bin
 *.img
 *.iso
+
+#generated files
+*_gen.*
+
+build/*

@@ -17,20 +17,21 @@ fat_img := build/os-$(arch).img
 loop0 := /dev/loop23
 loop1 := /dev/loop24
 
-.PHONY: all clean run iso
+.PHONY: all clean run iso generate
 
 all: $(kernel)
 
 clean:
 	rm -r build
+	rm src/asm/*_gen.*
 
 run: $(fat_img)
 	qemu-system-x86_64 -s -drive format=raw,file=$(fat_img)
 
 debug: $(fat_img)
-	x-terminal-emulator -e $(cross_compiler)/bin/x86_64-elf-gdb -x src/debug_script
+	#x-terminal-emulator -e $(cross_compiler)/bin/x86_64-elf-gdb -x src/debug_script &
 	#x-terminal-emulator -e gdb -x src/debug_script &
-	qemu-system-x86_64 -s -drive format=raw,file=$(fat_img)
+	qemu-system-x86_64 -d int -s -drive format=raw,file=$(fat_img)
 
 iso: $(iso)
 
@@ -48,14 +49,16 @@ source: $(c_object_files)
 	echo $(c_object_files)
 
 # compile assembly files
-build/asm/%.o: src/asm/%.asm
+build/asm/%.o: src/asm/%.asm generate
 	mkdir -p $(shell dirname $@)
 	nasm -felf64 $< -o $@
 
 # compile c files
-build/%.o: src/%.c
+build/%.o: src/%.c generate
 	$(cross_compiler)/bin/x86_64-elf-gcc -g -Wall -Werror -ffreestanding -mno-red-zone -c $< -o $@
 
+generate:
+	bash ./src/asm/generateISR.sh
 
 image: $(fat_img)
 

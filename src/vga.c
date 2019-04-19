@@ -2,6 +2,7 @@
 
 #include "vga.h"
 #include "memory.h"
+#include "interrupt.h"
 #include <stdarg.h>
 
 #define VGA_BASE 0xb8000
@@ -9,13 +10,19 @@ static unsigned short *vgaBuff = (unsigned short*)VGA_BASE;
 static int width = 80;
 static int height = 25;
 static unsigned int cursor = 0;
-//static unsigned char color = FG(VGA_LIGHT_GREY) | BG(VGA_BLACK);
-//static unsigned short color = 0x0700;
 
 void VGA_display_char(char c)
 {
     int lines;
     int i;
+    //int enableInterupts = 0;
+
+
+   // if(areInteruptsEnabled()){
+   //     enableInterupts = 1;
+        CLI;
+   // }
+
     if (c == '\n') {
         cursor = ((cursor/width) + 1) * width;
         if (cursor >= width*height){
@@ -44,6 +51,10 @@ void VGA_display_char(char c)
     }
     
     if(cursor >= width*height) cursor = 0;
+
+   // if(enableInterupts){
+        STI;
+    //}
 }
 
 
