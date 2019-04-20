@@ -75,6 +75,22 @@ char areInterruptsEnabled()
     return 0;
 }
 
+inline char clearIntConditional()
+{
+    if(areInterruptsEnabled()){
+        CLI;
+        return 1;
+    }
+    return 0;
+}
+
+inline void setIntConditional(char cond)
+{
+    if(cond){
+        STI;
+    }
+}
+
 void PIC_remap(int offset1, int offset2)
 {
 	unsigned char a1, a2;

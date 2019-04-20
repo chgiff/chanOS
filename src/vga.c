@@ -3,6 +3,7 @@
 #include "vga.h"
 #include "memory.h"
 #include "interrupt.h"
+#include "serial.h"
 #include <stdarg.h>
 
 #define VGA_BASE 0xb8000
@@ -11,17 +12,17 @@ static int width = 80;
 static int height = 25;
 static unsigned int cursor = 0;
 
+//TODO debugging mirror to serial
+static int writeToSerial = 1;
+
 void VGA_display_char(char c)
 {
     int lines;
     int i;
-    int enableInterupts = 0;
+    int enableInterrupts;
 
 
-    if(areInterruptsEnabled()){
-        enableInterupts = 1;
-        CLI;
-    }
+    enableInterrupts = clearIntConditional();
 
     if (c == '\n') {
         cursor = ((cursor/width) + 1) * width;
@@ -52,9 +53,7 @@ void VGA_display_char(char c)
     
     if(cursor >= width*height) cursor = 0;
 
-    if(enableInterupts){
-        STI;
-    }
+    setIntConditional(enableInterrupts);
 }
 
 
@@ -78,14 +77,31 @@ void VGA_clear()
         vgaBuff[i] = 0x0720;
     }
 }
+ 
+
+void generic_display_char(char c)
+{
+    if(writeToSerial){
+        SER_write_char(c);
+    }
+    VGA_display_char(c);
+}
+int generic_display_str_internal(const char *str)
+{
+    int i;
+    for(i = 0; str[i]; i++){
+        generic_display_char(str[i]);
+    }
+    return i;
+}
 
 int printHex(unsigned long long num)
 {
     if(num == 0) return 0;
     int c = printHex(num >> 4);
     
-    if((num & 0xF) < 10) VGA_display_char('0' + (num & 0xF));
-    else VGA_display_char('A' + (num & 0xF) - 10);
+    if((num & 0xF) < 10) generic_display_char('0' + (num & 0xF));
+    else generic_display_char('A' + (num & 0xF) - 10);
 
     return c + 1;
 }
@@ -94,7 +110,7 @@ int printUnsigned(unsigned long long num)
 {
     if(num == 0) return 0;
     int c = printUnsigned(num/10);
-    VGA_display_char('0' + (num%10));
+    generic_display_char('0' + (num%10));
     return c+1;
 }
 
@@ -102,7 +118,7 @@ int printSigned(long long num)
 {
     int c = 0;
     if(num < 0){
-        VGA_display_char('-');
+        generic_display_char('-');
         num *= -1;
         c = 1;
     }
@@ -121,7 +137,7 @@ int printk(const char *fmt, ...)
             i++;
             switch(fmt[i]){
                 case 'c':
-                    VGA_display_char(va_arg(args, int));
+                    generic_display_char(va_arg(args, int));
                     printedChars++;
                     break;
                 case 'p':
@@ -160,16 +176,16 @@ int printk(const char *fmt, ...)
                     break;
 
                 case 's':
-                    printedChars += VGA_display_str_internal(va_arg(args, char*));
+                    printedChars += generic_display_str_internal(va_arg(args, char*));
                     break;
                 default:
-                    VGA_display_char(fmt[i]);
+                    generic_display_char(fmt[i]);
                     printedChars++;
                     break;
             }
         }
         else{
-            VGA_display_char(fmt[i]);
+            generic_display_char(fmt[i]);
             printedChars++;
         }
     }

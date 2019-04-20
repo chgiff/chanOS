@@ -2,6 +2,7 @@
 #include "keyboard.h"
 #include "interrupt.h"
 #include "gdt.h"
+#include "serial.h"
 
 #define WHITE_TXT 0x07
 
@@ -18,15 +19,18 @@ void kmain()
 
     init_gdt();
 
-    IRQ_set_handler(33, &keyboardISR, (void *)0);
+    IRQ_set_handler(33, &keyboardISR, (void *)0); //irq 1
     initializeKeyboard();
+
+    IRQ_set_handler(36, &serial_write_isr, (void *)0);
+    SER_init();
 
     IRQ_init();
 
     VGA_clear();
 
     VGA_display_str("hello world\ndddd");
-
+    SER_write_str("Hello serial!!!", 15);
 
     VGA_display_char('\n');
     VGA_display_char('\n');
@@ -66,17 +70,6 @@ void kmain()
 
     short sh = -45;
     printk("Testing signed short: %hd\n", sh);
-
-    /*
-    int i, j;
-    for(j = 0; j < 40; j++){
-        for(i = 0; i < 10+j; i ++){
-            printk("#");
-            //wait();
-        }
-        printk("\n");
-    }
-    */
 
     VGA_display_char('-');
 

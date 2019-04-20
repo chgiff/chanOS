@@ -183,6 +183,6 @@ void keyboardISR(int interrupt, int error, void *data)
     unsigned char code;
     code = readData();
     if(code < 58){
-        VGA_display_char(asccode[code][0]);
+        printk("%c", asccode[code][0]);
     }
 }

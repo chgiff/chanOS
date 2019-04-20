@@ -26,12 +26,12 @@ clean:
 	rm src/asm/*_gen.*
 
 run: $(fat_img)
-	qemu-system-x86_64 -s -drive format=raw,file=$(fat_img)
+	qemu-system-x86_64 -s -drive format=raw,file=$(fat_img) -serial stdio
 
 debug: $(fat_img)
 	#x-terminal-emulator -e $(cross_compiler)/bin/x86_64-elf-gdb -x src/debug_script &
 	#x-terminal-emulator -e gdb -x src/debug_script &
-	qemu-system-x86_64 -d int -s -drive format=raw,file=$(fat_img)
+	qemu-system-x86_64 -d int -s -drive format=raw,file=$(fat_img) -serial stdio
 
 iso: $(iso)
 
