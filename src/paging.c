@@ -366,8 +366,10 @@ void pageFaultISR(int interrupt, int error, void *data)
         }
         void *backingPage = MMU_pf_alloc();
         memset1(backingPage, 0, PAGE_SIZE);
-        *(uint64_t *)l1 = ((uint64_t)backingPage & ~(0xFFF)) | (*(uint64_t *)l1 & 0xFFF);
+        *(uint64_t *)l1 = ((uint64_t)backingPage & ~(0xFFF));
         l1->present = 1;
+        l1->allocated = 1;
+        l1->rw = 1;
     }
     else{
         printPageFaultError(virtualAddr, pageTableAddr, error);

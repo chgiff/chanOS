@@ -22,7 +22,7 @@ i=8
     echo "   push rdi" >> $FILENAME
     echo "   push rsi" >> $FILENAME
     echo "   mov rdi, $i" >> $FILENAME
-    echo "   mov rsi, [rsp+12]" >> $FILENAME
+    echo "   mov rsi, [rsp+16]" >> $FILENAME
     echo "   jmp isr_error" >> $FILENAME
 for((i=10; i<=14; i++));
 do
@@ -39,7 +39,7 @@ do
     echo "   push rdi" >> $FILENAME
     echo "   push rsi" >> $FILENAME
     echo "   mov rdi, $i" >> $FILENAME
-    echo "   mov rsi, [rsp+12]" >> $FILENAME #TODO sp+12
+    echo "   mov rsi, [rsp+16]" >> $FILENAME
     echo "   jmp isr_error" >> $FILENAME
 done
 
