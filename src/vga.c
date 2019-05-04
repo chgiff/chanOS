@@ -95,23 +95,41 @@ int generic_display_str_internal(const char *str)
     return i;
 }
 
-int printHex(unsigned long long num)
+int printHex_internal(unsigned long long num)
 {
     if(num == 0) return 0;
-    int c = printHex(num >> 4);
+    int c = printHex_internal(num >> 4);
     
     if((num & 0xF) < 10) generic_display_char('0' + (num & 0xF));
     else generic_display_char('A' + (num & 0xF) - 10);
 
     return c + 1;
 }
+int printHex(unsigned long long num)
+{
+    generic_display_char('0');
+    generic_display_char('x');
+    if(num == 0){
+        generic_display_char('0');
+        return 3;
+    }
+    return 2 + printHex_internal(num);
+}
 
-int printUnsigned(unsigned long long num)
+int printUnsigned_internal(unsigned long long num)
 {
     if(num == 0) return 0;
-    int c = printUnsigned(num/10);
+    int c = printUnsigned_internal(num/10);
     generic_display_char('0' + (num%10));
     return c+1;
+}
+int printUnsigned(unsigned long long num)
+{
+    if(num == 0){
+        generic_display_char('0');
+        return 1;
+    }
+    return printUnsigned_internal(num);
 }
 
 int printSigned(long long num)

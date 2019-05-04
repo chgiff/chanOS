@@ -1,83 +1,107 @@
 #include "memory.h"
+#include "paging.h"
 
-#define BASIC_MEM_INFO_TAG 4
-#define BIOS_BOOT_DEV_TAG 5
-#define BOOT_CMD_LINE_TAG 1
-#define BOOT_LOADER_NAME_TAG 2
-#define MEM_MAP_TAG 6
-#define ELF_SYM_TAG 9
+#define PAGE_SIZE 4096
 
-//global boot data
-char *cmdLine;
-char *bootLoaderName;
+struct MemBlock{
+    void* next;
+};
 
-struct GenericTag {
-    uint32_t type;
-    uint32_t size;
-}__attribute__((packed)); 
+struct MemPool{
+    int blockSize;
+    int count;
+    struct MemBlock *head;
+};
 
-struct BasicMemTag {
-    uint32_t type; //4
-    uint32_t size; //16
-    uint32_t lowMem;
-    uint32_t highMem;
-}__attribute__((packed));
+struct BlockHeader {
+    struct MemPool *pool;
+    uint64_t size;
+};
 
-struct BootDevTag {
-    uint32_t type; //5
-    uint32_t size; //20
-    uint32_t bootDev;
-    uint32_t bootPart;
-    uint32_t bootSubPart;
-}__attribute__((packed));
+struct MemPool pools[6] = {
+    {32, 0, 0}, 
+    {64, 0, 0}, 
+    {128, 0, 0},
+    {512, 0, 0},
+    {1024, 0, 0},
+    {2048, 0, 0}
+};
 
-struct BootCmdLineTag {
-    uint32_t type; //1
-    uint32_t size; 
-    //c string (variable)
-}__attribute__((packed));
+void fillPool(struct MemPool *pool)
+{
+    int blkSize = pool->blockSize;
+    void *page = MMU_alloc_page();
+    if(page == 0){
+        //error getting new page
+        return;
+    }
 
-struct BootLoaderNameTag {
-    uint32_t type; //2
-    uint32_t size; 
-    //c string (variable)
-}__attribute__((packed));
+    for(int i = 0; i < PAGE_SIZE/blkSize; i++){
+        struct MemBlock *blk = (struct MemBlock *)(page + i*blkSize);
+        blk->next = pool->head;
+        pool->head = blk;
+        pool->count ++; 
+    }
+}
 
-struct MemMapEntry {
-    uint64_t startAddr;
-    uint64_t length;
-    uint32_t type;
-    uint32_t reserved;
-}__attribute__((packed));
+void *getBlock(struct MemPool *pool, uint64_t size)
+{
+    if(pool->count == 0){
+        //get more memory
+        fillPool(pool);
+        if(pool->count == 0){
+            //failed to get more memory
+            return (void*)0;
+        }
+    }
 
-struct MemMapTag {
-    uint32_t type; //6
-    uint32_t size; 
-    uint32_t entrySize; //24?
-    //list of MemMapEntry
-}__attribute__((packed));
+    struct BlockHeader *header = (struct BlockHeader *)pool->head;
+    pool->head = pool->head->next;
+    pool->count --;
 
-struct ElfSectionHeader {
-    uint32_t nameIndex;
-    uint32_t type;
-    uint32_t flags;
-    uint64_t address;
-    uint64_t segOffset;
-    uint64_t segSize;
-    uint32_t tableIndex;
-    uint32_t extraInfo;
-    uint64_t addrAlignment;
-    uint64_t entrySize;
-}__attribute__((packed));
+    header->pool = pool;
+    header->size = size;
 
-struct ElfSymTag {
-    uint32_t type; //9
-    uint32_t size;
-    uint32_t numSecEntries;
-    uint32_t secEntrySize;
-    uint32_t indexStringTable;
-    //array of section headers
-}__attribute__((packed));
+    return header + 1;
+}
+
+void *kmalloc(uint64_t size)
+{
+    //search for best fit
+    for(int i = 0; i < 6; i ++){
+        if(size < pools[i].blockSize - sizeof(struct BlockHeader)){
+            return getBlock(&pools[i], size);
+        }
+    }
+    
+    //allocate whole pages
+    void * addr = MMU_alloc_pages((size + sizeof(struct BlockHeader) + PAGE_SIZE - 1)/PAGE_SIZE);
+    if(addr == 0){
+        //error
+        return 0;
+    }
+    struct BlockHeader *header = (struct BlockHeader *)addr;
+    header->pool = 0;
+    header->size = size;
+    return (void *)(header + 1);
+}
+
+void kfree(void *addr)
+{
+    struct BlockHeader *header = (struct BlockHeader *)(addr - sizeof(struct BlockHeader));
+
+    if(header->pool == 0){
+        //special case, free whole pages
+        MMU_free_pages((void*)header, (header->size + sizeof(struct BlockHeader) + PAGE_SIZE - 1)/PAGE_SIZE);
+        return;
+    }
+
+    struct MemPool *pool = header->pool;
+    struct MemBlock *freeBlock = (struct MemBlock *)header;
+
+    freeBlock->next = pool->head;
+    pool->head = freeBlock;
+}
 
 void *memset1(void *s, int c, unsigned int n)
 {
@@ -132,84 +156,3 @@ inline void io_wait(void)
 }
 
 
-void parseBasicMemTag(struct BasicMemTag *tag)
-{
-    //shouldn't use
-}
-
-void parseBootDevTag(struct BootDevTag *tag)
-{
-    //TODO
-}
-
-void parseMemMapEntry(struct MemMapEntry *entry)
-{
-    //type one is free for use
-    if(entry->type == 1){
-        //TODO
-    }
-}
-
-void parseMemMapTag(struct MemMapTag *tag)
-{
-    int i;
-    struct MemMapEntry *curEntry;
-    uint32_t entries = (tag->size - sizeof(struct MemMapTag))/tag->entrySize;
-
-    curEntry = (struct MemMapEntry *)(tag + 1);
-
-    for(i = 0; i < entries; i++){
-        parseMemMapEntry(curEntry);
-        curEntry++;
-    }
-}
-
-void parseElfSymbols(struct ElfSymTag *tag)
-{
-
-}
-
-void parseBootTags(void *tagHeader)
-{
-    void *curPointer;
-    //uint32_t totalSize;
-    char parsingTags = 1;
-
-    //totalSize = *(uint32_t *)tagHeader;
-    curPointer = tagHeader;
-    curPointer += 8; //move to begining of tag entries
-
-    while(parsingTags){
-        struct GenericTag *genericTag = (struct GenericTag *)curPointer;
-
-        switch(genericTag->type){
-            case BASIC_MEM_INFO_TAG: 
-                parseBasicMemTag((struct BasicMemTag*) curPointer);
-                break;
-            case BIOS_BOOT_DEV_TAG:
-                parseBootDevTag((struct BootDevTag*) curPointer);
-                break;
-            case BOOT_CMD_LINE_TAG:
-                cmdLine = curPointer + 8;
-                break;
-            case BOOT_LOADER_NAME_TAG:
-                bootLoaderName = curPointer + 8;
-                break;
-            case MEM_MAP_TAG:
-                parseMemMapTag((struct MemMapTag*) curPointer);
-                break;
-            case ELF_SYM_TAG:
-                parseElfSymbols((struct ElfSymTag*) curPointer);
-                break;
-            case 0:
-                //terminates tag list
-                parsingTags = 0;
-                break;
-            default:
-                //TODO error
-                break;
-        }
-
-        curPointer += genericTag->size;
-    }
-}

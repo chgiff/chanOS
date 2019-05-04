@@ -15,6 +15,7 @@ long_mode_start:
     mov fs, ax
     mov gs, ax
     
+    ;pointer to multiboot info passed as arg
     call kmain
 
     hlt

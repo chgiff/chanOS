@@ -6,6 +6,9 @@ bits 32
 start:
     mov esp, stack_top
 
+    ;save multiboot info pointer on stack
+    push ebx
+
     call check_multiboot
     call check_cpuid
     call check_long_mode
@@ -16,6 +19,8 @@ start:
     ; load the 64-bit GDT
     lgdt [gdt64.pointer]
 
+    ;get back multiboot info from stack
+    pop edi
     jmp gdt64.code:long_mode_start
 
 ; Prints `ERR: ` and the given error code to screen and hangs.
