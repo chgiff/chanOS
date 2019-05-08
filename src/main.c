@@ -18,8 +18,8 @@ void wait()
 
 void kmain(void *multibootInfo)
 {
-    char loop = 0;
-    while(!loop);
+    //char loop = 0;
+    //while(!loop);
 
     setup_identity();
 
@@ -45,12 +45,14 @@ void kmain(void *multibootInfo)
 
     printk("Loaded by: %s\n", getBootLoaderName());
 
-    //test_pf_allocator();
+    test_pf_allocator();
    
+   /*
     void *blah = kmalloc(15);
     printk("Allocated memory: %p\n", blah);
     void *blah2 = kmalloc(1115);
     printk("Allocated memory: %p\n", blah2);
+    */
 
     while(1){
         asm("hlt");

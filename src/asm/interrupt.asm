@@ -20,4 +20,5 @@ isr_error:
     call isr_c
     pop rsi
     pop rdi
+    add rsp, 8
     iretq

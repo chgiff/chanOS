@@ -5,6 +5,7 @@
 
 void test_pf_allocator()
 {
+    int i;
     void * p1, *p2, *p3, *p4;
     printk("Testing page frame allocator\n");
     p1 = MMU_pf_alloc();
@@ -40,13 +41,13 @@ void test_pf_allocator()
         pageCount ++;
 
         //write bit pattern
-        for(int i = 0; i < 4096/4; i++){
+        for(i = 0; i < 4096/sizeof(uint64_t); i++){
             uint64_t *ptr = (uint64_t *)p1;
             ptr[i] = (uint64_t)p1;
         }
 
         //read back bit pattern
-        for(int i = 0; i < 4096/4; i++){
+        for(i = 0; i < 4096/sizeof(uint64_t); i++){
             uint64_t *ptr = (uint64_t *)p1;
             if(ptr[i] != (uint64_t)p1){
                 printk("Error, page %ld bit pattern missmatch\n", pageCount);

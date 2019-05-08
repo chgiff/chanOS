@@ -29,6 +29,7 @@ struct MemPool pools[6] = {
 
 void fillPool(struct MemPool *pool)
 {
+    int i;
     int blkSize = pool->blockSize;
     void *page = MMU_alloc_page();
     if(page == 0){
@@ -36,7 +37,7 @@ void fillPool(struct MemPool *pool)
         return;
     }
 
-    for(int i = 0; i < PAGE_SIZE/blkSize; i++){
+    for(i = 0; i < PAGE_SIZE/blkSize; i++){
         struct MemBlock *blk = (struct MemBlock *)(page + i*blkSize);
         blk->next = pool->head;
         pool->head = blk;
@@ -67,8 +68,9 @@ void *getBlock(struct MemPool *pool, uint64_t size)
 
 void *kmalloc(uint64_t size)
 {
+    int i;
     //search for best fit
-    for(int i = 0; i < 6; i ++){
+    for(i = 0; i < 6; i ++){
         if(size < pools[i].blockSize - sizeof(struct BlockHeader)){
             return getBlock(&pools[i], size);
         }

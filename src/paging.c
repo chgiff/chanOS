@@ -92,12 +92,13 @@ struct P3_entry P3_identity[512] __attribute__((aligned (4096)));
 
 void setup_identity()
 {
+    int i;
     //point first P4 entry to the P3 identity table
     *(uint64_t*)&P4[0] = (uint64_t)(&P3_identity);
     P4[0].present = 1;
     P4[0].rw = 1; //writable
     
-    for(int i = 0; i < 512; i++){
+    for(i = 0; i < 512; i++){
         uint64_t addr = 0x40000000 * i;
         *(uint64_t*)&P3_identity[i] = addr;
         P3_identity[i].present = 1;
@@ -319,8 +320,9 @@ void *MMU_alloc_page()
 
 void *MMU_alloc_pages(int num)
 {
+    int i;
     void *ret = nextVirtualPage;
-    for(int i = 0; i < num; i++){
+    for(i = 0; i < num; i++){
         setAllocated(nextVirtualPage, P4);
         nextVirtualPage += PAGE_SIZE;
     }
@@ -335,7 +337,8 @@ void MMU_free_page(void *virtualAddress)
 
 void MMU_free_pages(void *virtualAddress, int num)
 {
-    for(int i = 0; i < num; i++){
+    int i;
+    for(i = 0; i < num; i++){
         MMU_free_page(virtualAddress);
         virtualAddress += PAGE_SIZE;
     }
