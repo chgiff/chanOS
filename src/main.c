@@ -7,23 +7,23 @@
 #include "test.h"
 #include "paging.h"
 #include "memory.h"
+#include "multitask.h"
 
-#define WHITE_TXT 0x07
+#include "snakes.h"
 
-void wait()
+void test_thread(void *arg)
 {
-    int i = 900000;
-    while(i) i--;
+    printk("test thread: %p\n", arg);
+    yield();
+    printk("test thread print 2: %p\n", arg);
 }
 
-void kmain(void *multibootInfo)
-{
-    //char loop = 0;
-    //while(!loop);
-
+void init(void *multibootInfo)
+{   
+    /* Initialization code */
+    //page table
     setup_identity();
 
-    /* Initialization code */
     //gdt
     init_gdt();
 
@@ -37,24 +37,43 @@ void kmain(void *multibootInfo)
     IRQ_set_handler(36, &serial_write_isr, (void *)0);//irq 4 for com1
     SER_init();
 
+    //turn on interrupts
     IRQ_init();
 
     VGA_clear();
-    /* End Initialization code*/
-
-
     printk("Loaded by: %s\n", getBootLoaderName());
+    /* End Initialization code*/
+}
 
-    test_pf_allocator();
-   
-   /*
-    void *blah = kmalloc(15);
-    printk("Allocated memory: %p\n", blah);
-    void *blah2 = kmalloc(1115);
-    printk("Allocated memory: %p\n", blah2);
-    */
+void kmain(void *multibootInfo)
+{
+    // char loop = 0;
+    // while(!loop);
+
+    init(multibootInfo);
+
+    //test_pf_allocator();
+    //test_virtual_allocator();
+    
+    
+    // char *blah = (char*)kmalloc(15);
+    // printk("Allocated memory: %p\n", blah);
+    // void *blah2 = kmalloc(1115);
+    // printk("Allocated memory: %p\n", blah2);
+    
+    // blah[0] = 'h';
+    // blah[1] = 'e';
+    // blah[2] = 'l';
+    // blah[3] = 'l';
+    // blah[4] = 'o';
+    // printk("String: %s\n", (char*)blah);
+
+    //PROC_create_kthread(test_thread, (void*)2);
+    //PROC_create_kthread(test_thread, (void*)87126);
+
+    setup_snakes(1);
 
     while(1){
-        asm("hlt");
+        PROC_run();
     }
 }

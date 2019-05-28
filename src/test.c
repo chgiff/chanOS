@@ -58,3 +58,24 @@ void test_pf_allocator()
 
     printk("Allocated %ld pages\n", pageCount);
 }
+
+void test_virtual_allocator()
+{
+    int ret;
+    int * p1, *p2, *p3;
+    printk("Testing virtual page allocator\n");
+    p1 = (int*)MMU_alloc_page();
+    printk("First address is %p\n", p1);
+    p2 = (int*)MMU_alloc_page();
+    printk("Second address is %p\n", p2);
+    p3 = (int*)MMU_alloc_page();
+    printk("Third address is %p\n", p3);
+    
+    printk("Writing to page 1\n");
+    p1[2] = 0x7000;
+    p2[2] = 0x11000;
+
+    printk("Reading back from page 1\n");
+    ret = ((int*)p1)[2];
+    printk("Value: %d\n", ret);
+}

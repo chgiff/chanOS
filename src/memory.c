@@ -1,7 +1,9 @@
 #include "memory.h"
 #include "paging.h"
+#include "vga.h"
 
 #define PAGE_SIZE 4096
+#define NUM_POOLS 6
 
 struct MemBlock{
     void* next;
@@ -16,9 +18,10 @@ struct MemPool{
 struct BlockHeader {
     struct MemPool *pool;
     uint64_t size;
-};
+    uint64_t size2;
+}__attribute__((packed));
 
-struct MemPool pools[6] = {
+struct MemPool pools[NUM_POOLS] = {
     {32, 0, 0}, 
     {64, 0, 0}, 
     {128, 0, 0},
@@ -62,15 +65,16 @@ void *getBlock(struct MemPool *pool, uint64_t size)
 
     header->pool = pool;
     header->size = size;
+    header->size2 = size;
 
-    return header + 1;
+    return ((void *)header) + sizeof(struct BlockHeader);
 }
 
 void *kmalloc(uint64_t size)
 {
     int i;
     //search for best fit
-    for(i = 0; i < 6; i ++){
+    for(i = 0; i < NUM_POOLS; i ++){
         if(size < pools[i].blockSize - sizeof(struct BlockHeader)){
             return getBlock(&pools[i], size);
         }
@@ -82,15 +86,21 @@ void *kmalloc(uint64_t size)
         //error
         return 0;
     }
+
     struct BlockHeader *header = (struct BlockHeader *)addr;
     header->pool = 0;
     header->size = size;
-    return (void *)(header + 1);
+    header->size2 = size;
+    return ((void *)header) + sizeof(struct BlockHeader);
 }
 
 void kfree(void *addr)
 {
     struct BlockHeader *header = (struct BlockHeader *)(addr - sizeof(struct BlockHeader));
+
+    if(header->size != header->size2){
+        printk("Memory corruption!!!\n");
+    }
 
     if(header->pool == 0){
         //special case, free whole pages
@@ -132,6 +142,18 @@ void *memmove1(void *dest, const void *src, unsigned int n)
         for(i = 0; i < n; i++){
             destBytes[i] = srcBytes[i];
         }
+    }
+
+    return dest;
+}
+
+void *memcpy1(void *dest, const void *src, unsigned int n)
+{
+    const unsigned char *srcBytes = (unsigned char *)src;
+    unsigned char *destBytes = (unsigned char *)dest;
+    int i;
+    for(i = n-1; i >=0; i--){
+        destBytes[i] = srcBytes[i];
     }
 
     return dest;

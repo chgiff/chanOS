@@ -2,6 +2,10 @@ FILENAME=$(dirname $0)"/interrupt_gen.asm"
 
 echo "extern isr_normal"  > $FILENAME
 echo "extern isr_error" >> $FILENAME
+echo "extern sysCallISR" >> $FILENAME
+echo "extern curr_proc" >> $FILENAME
+echo "extern next_proc" >> $FILENAME
+echo "extern switch_contexts" >> $FILENAME
 
 for((i=0; i<=255; i++));
 do
@@ -11,14 +15,6 @@ done
 #handle error interrupts
 i=8
     echo "irq$i:" >> $FILENAME
-
-    # echo "mov dword [0xb8000], 0x4f524f45" >> $FILENAME
-    # echo "mov dword [0xb8004], 0x4f3a4f52" >> $FILENAME
-    # echo "mov dword [0xb8008], 0x4f204f45" >> $FILENAME
-    # echo "mov dword [0xb800C], 0x4f464f44" >> $FILENAME
-    # echo "cli" >> $FILENAME
-    # echo "hlt" >> $FILENAME
-
     echo "   push rdi" >> $FILENAME
     echo "   push rsi" >> $FILENAME
     echo "   mov rdi, $i" >> $FILENAME
@@ -27,15 +23,6 @@ i=8
 for((i=10; i<=14; i++));
 do
     echo "irq$i:" >> $FILENAME
-
-
-    # echo "mov dword [0xb8000], 0x4f524f45" >> $FILENAME
-    # echo "mov dword [0xb8004], 0x4f3a4f52" >> $FILENAME
-    # echo "mov dword [0xb8008], 0x4f204f20" >> $FILENAME
-    # echo "mov dword [0xb800C], 0x4f504f47" >> $FILENAME
-    # echo "cli" >> $FILENAME
-    # echo "hlt" >> $FILENAME
-
     echo "   push rdi" >> $FILENAME
     echo "   push rsi" >> $FILENAME
     echo "   mov rdi, $i" >> $FILENAME
@@ -47,14 +34,6 @@ done
 for((i=0; i<=7; i++));
 do
     echo "irq$i:" >> $FILENAME
-
-    # echo "mov dword [0xb8000], 0x4f524f45" >> $FILENAME
-    # echo "mov dword [0xb8004], 0x4f3a4f52" >> $FILENAME
-    # echo "mov dword [0xb8008], 0x4f204f52" >> $FILENAME
-    # echo "mov dword [0xb8030], 0x4f524f45" >> $FILENAME
-    # echo "hlt" >> $FILENAME
-
-
     echo "   push rdi" >> $FILENAME
     echo "   mov rdi, $i" >> $FILENAME
     echo "   jmp isr_normal" >> $FILENAME
@@ -62,29 +41,37 @@ done
 for((i=9; i<=9; i++));
 do
     echo "irq$i:" >> $FILENAME
-
-
-    # echo "mov dword [0xb8000], 0x4f524f45" >> $FILENAME
-    # echo "mov dword [0xb8004], 0x4f3a4f52" >> $FILENAME
-    # echo "mov dword [0xb8008], 0x4f204f3a" >> $FILENAME
-    # echo "mov dword [0xb8040], 0x4f524f45" >> $FILENAME
-    # echo "hlt" >> $FILENAME
-
     echo "   push rdi" >> $FILENAME
     echo "   mov rdi, $i" >> $FILENAME
     echo "   jmp isr_normal" >> $FILENAME
 done
-for((i=15; i<=255; i++));
+for((i=15; i<=127; i++));
 do
     echo "irq$i:" >> $FILENAME
+    echo "   push rdi" >> $FILENAME
+    echo "   mov rdi, $i" >> $FILENAME
+    echo "   jmp isr_normal" >> $FILENAME
+done
 
+#handle sys call trap
+for((i=128; i<=128; i++));
+do
+    echo "irq$i:" >> $FILENAME
+    echo "   call sysCallISR" >> $FILENAME
+    echo "   push rdi" >> $FILENAME
+    echo "   push rsi" >> $FILENAME
+    echo "   mov rsi, [curr_proc]" >> $FILENAME
+    echo "   mov rdi, [next_proc]" >> $FILENAME
+    echo "   cmp rsi, rdi" >> $FILENAME
+    echo "   jne switch_contexts" >> $FILENAME
+    echo "   pop rsi" >> $FILENAME
+    echo "   pop rdi" >> $FILENAME
+    echo "   iretq" >> $FILENAME
+done
 
-    # echo "mov dword [0xb8000], 0x4f524f45" >> $FILENAME
-    # echo "mov dword [0xb8004], 0x4f3a4f52" >> $FILENAME
-    # echo "mov dword [0xb8008], 0x4f204f3a" >> $FILENAME
-    # echo "mov dword [0xb800c], 0x4f204f3a" >> $FILENAME
-    #echo "hlt" >> $FILENAME
-
+for((i=129; i<=255; i++));
+do
+    echo "irq$i:" >> $FILENAME
     echo "   push rdi" >> $FILENAME
     echo "   mov rdi, $i" >> $FILENAME
     echo "   jmp isr_normal" >> $FILENAME

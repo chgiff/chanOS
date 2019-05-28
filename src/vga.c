@@ -77,7 +77,13 @@ void VGA_clear()
         vgaBuff[i] = 0x0720;
     }
 }
- 
+
+void VGA_display_attr_char(int x, int y, char c, int fg, int bg)
+{
+    int index = y*80 + x;
+    vgaBuff[index] = ((bg & 0x7) << 12) | ((fg & 0xF) << 8) | c;
+}
+
 
 void generic_display_char(char c)
 {
