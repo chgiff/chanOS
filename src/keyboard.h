@@ -2,8 +2,9 @@
 #define KEYBOARD_H
 
 extern void initializeKeyboard();
-extern void setKeyboardInterrupts(char on);
 extern unsigned char getKey();
+
+extern char getChar();
 
 extern void keyboardISR(int interrupt, int error, void *data);
 

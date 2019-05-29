@@ -145,7 +145,7 @@ struct PageTable_L1 * getPageTableL1(void * virtualPointer, struct PageTable_L4 
     }
     struct PageTable_L2 *l2 = (struct PageTable_L2 *)((*((uint64_t *)l3_entry)) & ~0xFFF);
 
-    l2Index = (((uint64_t)virtualPointer) >> 21) & 0x1F; //bits 21-29
+    l2Index = (((uint64_t)virtualPointer) >> 21) & 0x1FF; //bits 21-29
     struct P2_entry *l2_entry = &l2->entries[l2Index];
     if(!l2_entry->present){
         //error
@@ -186,7 +186,7 @@ uint64_t getPhysicalAddress(void * virtualPointer, struct PageTable_L4 *l4)
     }
     struct PageTable_L2 *l2 = (struct PageTable_L2 *)((*((uint64_t *)l3_entry)) & ~0xFFF);
 
-    l2Index = (((uint64_t)virtualPointer) >> 21) & 0x1F; //bits 21-29
+    l2Index = (((uint64_t)virtualPointer) >> 21) & 0x1FF; //bits 21-29
     struct P2_entry *l2_entry = &l2->entries[l2Index];
     if(!l2_entry->present){
         //error
@@ -200,7 +200,7 @@ uint64_t getPhysicalAddress(void * virtualPointer, struct PageTable_L4 *l4)
     }
     struct PageTable_L1 *l1 = (struct PageTable_L1 *)((*((uint64_t *)l2_entry)) & ~0xFFF);
     
-    l1Index = (((uint64_t)virtualPointer) >> 12) & 0x1F; //bits 12-20
+    l1Index = (((uint64_t)virtualPointer) >> 12) & 0x1FF; //bits 12-20
     struct P1_entry *l1_entry = &l1->entries[l1Index];
     if(!l1_entry->present){
         //error
@@ -238,7 +238,7 @@ void* deallocate(void * virtualPointer, struct PageTable_L4 *l4)
     }
     struct PageTable_L2 *l2 = (struct PageTable_L2 *)((*((uint64_t *)l3_entry)) & ~0xFFF);
 
-    l2Index = (((uint64_t)virtualPointer) >> 21) & 0x1F; //bits 21-29
+    l2Index = (((uint64_t)virtualPointer) >> 21) & 0x1FF; //bits 21-29
     struct P2_entry *l2_entry = &l2->entries[l2Index];
     if(!l2_entry->present){
         //error
@@ -252,7 +252,7 @@ void* deallocate(void * virtualPointer, struct PageTable_L4 *l4)
     }
     struct PageTable_L1 *l1 = (struct PageTable_L1 *)((*((uint64_t *)l2_entry)) & ~0xFFF);
     
-    l1Index = (((uint64_t)virtualPointer) >> 12) & 0x1F; //bits 12-20
+    l1Index = (((uint64_t)virtualPointer) >> 12) & 0x1FF; //bits 12-20
     struct P1_entry *l1_entry = &l1->entries[l1Index];
     if(!l1_entry->present){
         //error
@@ -302,7 +302,7 @@ void setAllocated(void * virtualPointer, struct PageTable_L4 *l4)
     struct PageTable_L2 *l2 = (struct PageTable_L2 *)((*((uint64_t *)l3_entry)) & ~0xFFF);
 
 
-    l2Index = (((uint64_t)virtualPointer) >> 21) & 0x1F; //bits 21-29
+    l2Index = (((uint64_t)virtualPointer) >> 21) & 0x1FF; //bits 21-29
     struct P2_entry *l2_entry = &l2->entries[l2Index];
     if(!l2_entry->present){
         //create frame for l1 table
@@ -319,7 +319,7 @@ void setAllocated(void * virtualPointer, struct PageTable_L4 *l4)
     }
     struct PageTable_L1 *l1 = (struct PageTable_L1 *)((*((uint64_t *)l2_entry)) & ~0xFFF);
     
-    l1Index = (((uint64_t)virtualPointer) >> 12) & 0x1F; //bits 12-20
+    l1Index = (((uint64_t)virtualPointer) >> 12) & 0x1FF; //bits 12-20
     struct P1_entry *l1_entry = &l1->entries[l1Index];
     l1_entry->allocated = 1;
     //l1 is set available but the page isn't allocated yet
@@ -333,6 +333,9 @@ void setAllocated(void * virtualPointer, struct PageTable_L4 *l4)
         l1_entry->present = 1;
         l1_entry->allocated = 1;
         l1_entry->rw = 1;
+    }
+    else{
+        printk("Error: allocating twice!!\n");
     }
     asm ("mov %0, %%cr3" :: "r"(&P4));
 }
@@ -402,6 +405,9 @@ void pageFaultISR(int interrupt, int error, void *data)
     uint64_t virtualAddr, pageTableAddr;
     asm ("mov %%cr2, %0": "=r"(virtualAddr));
     asm ("mov %%cr3, %0": "=r"(pageTableAddr));
+
+    printk("Page fault address: %lx\n", virtualAddr);
+    return;
 
     struct PageTable_L1 *l1 = getPageTableL1((void*)virtualAddr, &P4);
     uint64_t l1Index = (virtualAddr >> 12) & 0x1F; //bits 12-20

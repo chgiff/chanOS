@@ -67,7 +67,11 @@ void *getBlock(struct MemPool *pool, uint64_t size)
     header->size = size;
     header->size2 = size;
 
-    return ((void *)header) + sizeof(struct BlockHeader);
+    void *addr = ((void *)header) + sizeof(struct BlockHeader);
+
+    // printk("Allocated %p of size %ld\n", addr, header->size);
+
+    return addr;
 }
 
 void *kmalloc(uint64_t size)
@@ -91,12 +95,18 @@ void *kmalloc(uint64_t size)
     header->pool = 0;
     header->size = size;
     header->size2 = size;
-    return ((void *)header) + sizeof(struct BlockHeader);
+    addr = ((void *)header) + sizeof(struct BlockHeader);
+
+    // printk("Allocated %p of size %ld\n", addr, header->size);
+    
+    return addr;
 }
 
 void kfree(void *addr)
 {
     struct BlockHeader *header = (struct BlockHeader *)(addr - sizeof(struct BlockHeader));
+
+    // printk("Freed %p of size %ld\n", addr, header->size);
 
     if(header->size != header->size2){
         printk("Memory corruption!!!\n");
@@ -152,7 +162,7 @@ void *memcpy1(void *dest, const void *src, unsigned int n)
     const unsigned char *srcBytes = (unsigned char *)src;
     unsigned char *destBytes = (unsigned char *)dest;
     int i;
-    for(i = n-1; i >=0; i--){
+    for(i = 0; i < n; i++){
         destBytes[i] = srcBytes[i];
     }
 

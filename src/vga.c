@@ -13,7 +13,7 @@ static int height = 25;
 static unsigned int cursor = 0;
 
 //TODO debugging mirror to serial
-static int writeToSerial = 1;
+static int writeToSerial = 0;
 
 void VGA_display_char(char c)
 {

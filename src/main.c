@@ -11,6 +11,8 @@
 
 #include "snakes.h"
 
+#define PAUSE 0
+
 void test_thread(void *arg)
 {
     printk("test thread: %p\n", arg);
@@ -45,10 +47,17 @@ void init(void *multibootInfo)
     /* End Initialization code*/
 }
 
+void printLoop(void *args)
+{
+    while(1){
+        printk("%c", getChar());
+    }
+}
+
 void kmain(void *multibootInfo)
 {
-    // char loop = 0;
-    // while(!loop);
+    char loop = !PAUSE;
+    while(!loop);
 
     init(multibootInfo);
 
@@ -68,12 +77,15 @@ void kmain(void *multibootInfo)
     // blah[4] = 'o';
     // printk("String: %s\n", (char*)blah);
 
-    //PROC_create_kthread(test_thread, (void*)2);
-    //PROC_create_kthread(test_thread, (void*)87126);
+    PROC_create_kthread(test_thread, (void*)2);
+    PROC_create_kthread(test_thread, (void*)87126);
+    PROC_create_kthread(printLoop, (void*)0);
 
     setup_snakes(1);
 
     while(1){
         PROC_run();
+        asm("hlt");
     }
+    printk("Done!\n");
 }

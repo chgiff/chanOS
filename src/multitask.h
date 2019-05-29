@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+struct ProcessQueue{
+    struct Process *head;
+};
+
 struct Process{
     //context
     uint64_t rax, rbx, rcx, rdx, rdi, rsi;
@@ -18,7 +22,10 @@ struct Process{
     int pid;
 
     //list pointers
-    struct Process *next, *prev;
+    struct Process *nextProc, *prevProc;
+    struct ProcessQueue *currQueue;
+    struct Process *nextInQueue, *prevInQueue;
+    
 }__attribute__((packed));
 
 extern struct Process *curr_proc;
@@ -29,6 +36,11 @@ typedef void (*kproc_t)(void*);
 extern struct Process * PROC_create_kthread(kproc_t entry_point, void* arg);
 
 extern void PROC_reschedule();
+
+extern void PROC_block_on(struct ProcessQueue *queue, int enable_ints);
+extern void PROC_unblock_head(struct ProcessQueue *queue);
+extern void PROC_unblock_all(struct ProcessQueue *queue);
+extern void PROC_init_queue(struct ProcessQueue *queue);
 
 //system call 1
 static inline void yield()

@@ -1,20 +1,58 @@
 #include "multitask.h"
 #include "memory.h"
 #include "vga.h"
+#include "interrupt.h"
 
 #define STACK_SIZE 2*1024*1024
 
 struct Process *curr_proc, *next_proc;
-struct Process *all_procs;
-
-
-struct Process dummy_process = { .next=&dummy_process, .prev=&dummy_process };
+struct Process dummy_process = { .nextProc=&dummy_process, .prevProc=&dummy_process };
 struct Process *all_procs = &dummy_process;
+
+struct ProcessQueue readyQueue = {.head=0};
 
 void runSchedule()
 {
-    next_proc = curr_proc->next;
-    if(next_proc == &dummy_process) next_proc = next_proc->next;
+    if(curr_proc->currQueue == &readyQueue){
+        next_proc = curr_proc->nextInQueue;
+    }
+    else if(readyQueue.head != 0){
+        next_proc = readyQueue.head;
+    }
+    else{
+        next_proc = &dummy_process;
+    }
+}
+
+void unlinkFromQueue(struct Process *proc)
+{
+    if(proc->nextInQueue == proc){
+        proc->currQueue->head = 0;
+    }
+    else{
+        proc->nextInQueue->prevInQueue = proc->prevInQueue;
+        proc->prevInQueue->nextInQueue = proc->nextInQueue;
+        if(proc->currQueue->head == proc){
+            proc->currQueue->head = proc->nextInQueue;
+        }
+    }
+    proc->currQueue = 0;
+}
+
+void appendToQueue(struct Process *newProc, struct ProcessQueue *queue)
+{
+    newProc->currQueue = queue;
+    if(queue->head == 0){
+        newProc->nextInQueue = newProc;
+        newProc->prevInQueue = newProc;
+        queue->head = newProc;
+    }
+    else{
+        newProc->prevInQueue = queue->head->prevInQueue;
+        queue->head->prevInQueue->nextInQueue = newProc;
+        queue->head->prevInQueue = newProc;
+        newProc->nextInQueue = queue->head;
+    }
 }
 
 void PROC_run()
@@ -43,10 +81,13 @@ struct Process * PROC_create_kthread(kproc_t entry_point, void* arg)
     newProc->rdi = (uint64_t)arg;
 
     //add into process circular list
-    newProc->prev = all_procs->prev;
-    all_procs->prev->next = newProc;
-    all_procs->prev = newProc;
-    newProc->next = all_procs;
+    newProc->prevProc = all_procs->prevProc;
+    all_procs->prevProc->nextProc = newProc;
+    all_procs->prevProc = newProc;
+    newProc->nextProc = all_procs;
+
+    //add to ready queue
+    appendToQueue(newProc, &readyQueue);
 
     return newProc;
 }
@@ -67,8 +108,11 @@ void yieldSysCall()
 void kexitSysCall(void)
 {
     struct Process *removed = curr_proc;
-    removed->next->prev = removed->prev;
-    removed->prev->next = removed->next;
+    removed->nextProc->prevProc = removed->prevProc;
+    removed->prevProc->nextProc = removed->nextProc;
+
+    unlinkFromQueue(removed);
+
     runSchedule();
 
     kfree(removed->stack_start);
@@ -91,4 +135,41 @@ void sysCallISR(int call_number, void * arg1, void* arg2, void* arg3, void* arg4
     default:
         break;
     }
+}
+
+
+
+void PROC_block_on(struct ProcessQueue *queue, int enable_ints)
+{
+    if(!queue){
+        return;
+    }
+
+    unlinkFromQueue(curr_proc);
+    appendToQueue(curr_proc, queue);
+
+    if(enable_ints){
+        STI;
+    }
+
+    yield();
+}
+
+void PROC_unblock_head(struct ProcessQueue *queue)
+{
+    struct Process *proc = queue->head;
+    unlinkFromQueue(proc);
+    appendToQueue(proc, &readyQueue);
+}
+
+void PROC_unblock_all(struct ProcessQueue *queue)
+{
+    while(queue->head){
+        PROC_unblock_head(queue);
+    }
+}
+
+void PROC_init_queue(struct ProcessQueue *queue)
+{
+    queue->head = 0;
 }
