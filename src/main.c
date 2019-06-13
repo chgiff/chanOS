@@ -11,7 +11,7 @@
 
 #include "snakes.h"
 
-#define PAUSE 1
+#define PAUSE 0
 
 void test_thread(void *arg)
 {
@@ -79,9 +79,9 @@ void kmain(void *multibootInfo)
 
     PROC_create_kthread(test_thread, (void*)2);
     PROC_create_kthread(test_thread, (void*)87126);
-    // PROC_create_kthread(printLoop, (void*)0);
+    PROC_create_kthread(printLoop, (void*)0);
 
-    // setup_snakes(1);
+    setup_snakes(1);
 
     while(1){
         PROC_run();

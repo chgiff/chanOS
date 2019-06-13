@@ -122,95 +122,6 @@ void setup_identity()
     asm ("mov %0, %%cr3" :: "r"(&P4));
 }
 
-struct PageTable_L1 * getPageTableL1(void * virtualPointer, struct PageTable_L4 *l4)
-{
-    uint64_t l4Index, l3Index, l2Index;
-    l4Index = (((uint64_t)virtualPointer) >> 39) & 0x1FF; //bits 39-48
-    struct P4_entry *l4_entry = &l4->entries[l4Index];
-    if(!l4_entry->present){
-        //error
-        return 0;
-    }
-    struct PageTable_L3 *l3 = (struct PageTable_L3 *)((*((uint64_t *)l4_entry)) & ~0xFFF);
-    
-    l3Index = (((uint64_t)virtualPointer) >> 30) & 0x1FF; //bits 30-38
-    struct P3_entry *l3_entry = &l3->entries[l3Index];
-    if(!l3_entry->present){
-        //error
-        return 0;
-    }
-    if(l3_entry->big_page){
-        //1GB page case
-        return 0;
-    }
-    struct PageTable_L2 *l2 = (struct PageTable_L2 *)((*((uint64_t *)l3_entry)) & ~0xFFF);
-
-    l2Index = (((uint64_t)virtualPointer) >> 21) & 0x1FF; //bits 21-29
-    struct P2_entry *l2_entry = &l2->entries[l2Index];
-    if(!l2_entry->present){
-        //error
-        return 0;
-    }
-    if(l2_entry->big_page){
-        //2MB page case
-        return 0;
-    }
-    struct PageTable_L1 *l1 = (struct PageTable_L1 *)((*((uint64_t *)l2_entry)) & ~0xFFF);
-
-    return l1;
-}
-
-uint64_t getPhysicalAddress(void * virtualPointer, struct PageTable_L4 *l4)
-{
-    uint64_t l4Index, l3Index, l2Index, l1Index;
-    uint64_t physAddr;
-    l4Index = (((uint64_t)virtualPointer) >> 39) & 0x1FF; //bits 39-48
-    struct P4_entry *l4_entry = &l4->entries[l4Index];
-    if(!l4_entry->present){
-        //error
-        return 0;
-    }
-    struct PageTable_L3 *l3 = (struct PageTable_L3 *)((*((uint64_t *)l4_entry)) & ~0xFFF);
-    
-    l3Index = (((uint64_t)virtualPointer) >> 30) & 0x1FF; //bits 30-38
-    struct P3_entry *l3_entry = &l3->entries[l3Index];
-    if(!l3_entry->present){
-        //error
-        return 0;
-    }
-    if(l3_entry->big_page){
-        //1GB page case
-        physAddr = ((uint64_t)virtualPointer) & 0x3FFFFFFF; //bits 0-29 offset
-        physAddr |= (((uint64_t)l3_entry) & ~0x3FFFFFFF);
-        return physAddr;
-    }
-    struct PageTable_L2 *l2 = (struct PageTable_L2 *)((*((uint64_t *)l3_entry)) & ~0xFFF);
-
-    l2Index = (((uint64_t)virtualPointer) >> 21) & 0x1FF; //bits 21-29
-    struct P2_entry *l2_entry = &l2->entries[l2Index];
-    if(!l2_entry->present){
-        //error
-        return 0;
-    }
-    if(l2_entry->big_page){
-        //2 MB page case
-        physAddr = ((uint64_t)virtualPointer) & 0x1FFFFF; //bits 0-20 offset
-        physAddr |= (((uint64_t)l2_entry) & ~0x1FFFFF);
-        return physAddr;
-    }
-    struct PageTable_L1 *l1 = (struct PageTable_L1 *)((*((uint64_t *)l2_entry)) & ~0xFFF);
-    
-    l1Index = (((uint64_t)virtualPointer) >> 12) & 0x1FF; //bits 12-20
-    struct P1_entry *l1_entry = &l1->entries[l1Index];
-    if(!l1_entry->present){
-        //error
-        return 0;
-    }
-    physAddr = ((uint64_t)virtualPointer) & 0xFFF; //bits 0-11 offset
-    physAddr |= (*((uint64_t*)l1_entry) & ~0xFFF);
-    return physAddr;
-}
-
 //sets virtual address page as unavailble and returns physical address
 void* deallocate(void * virtualPointer, struct PageTable_L4 *l4)
 {
@@ -265,7 +176,7 @@ void* deallocate(void * virtualPointer, struct PageTable_L4 *l4)
     return (void*)physAddr;
 }
 
-void setAllocated(void * virtualPointer, struct PageTable_L4 *l4)
+int setAllocated(void * virtualPointer, struct PageTable_L4 *l4, char allocL1Now)
 {
     uint64_t l4Index, l3Index, l2Index, l1Index;
     l4Index = (((uint64_t)virtualPointer) >> 39) & 0x1FF; //bits 39-48
@@ -297,7 +208,7 @@ void setAllocated(void * virtualPointer, struct PageTable_L4 *l4)
     }
     if(l3_entry->big_page){
         //1 GB page case
-        return;
+        return 3;
     }
     struct PageTable_L2 *l2 = (struct PageTable_L2 *)((*((uint64_t *)l3_entry)) & ~0xFFF);
 
@@ -315,7 +226,7 @@ void setAllocated(void * virtualPointer, struct PageTable_L4 *l4)
     }
     if(l2_entry->big_page){
         //2MB page case
-        return;
+        return 2;
     }
     struct PageTable_L1 *l1 = (struct PageTable_L1 *)((*((uint64_t *)l2_entry)) & ~0xFFF);
     
@@ -324,20 +235,22 @@ void setAllocated(void * virtualPointer, struct PageTable_L4 *l4)
     l1_entry->allocated = 1;
     //l1 is set available but the page isn't allocated yet
 
-    //DEBUG
-    // if(!l1_entry->present){
-    //     //create frame for page
-    //     void *newPage = MMU_pf_alloc();
-    //     memset1(newPage, 0, PAGE_SIZE);
-    //     *(uint64_t*)(l1_entry) = (uint64_t)newPage;
-    //     l1_entry->present = 1;
-    //     l1_entry->allocated = 1;
-    //     l1_entry->rw = 1;
-    // }
-    // else{
-    //     printk("Error: allocating twice!!\n");
-    // }
+    if(l1_entry->present && allocL1Now){
+        printk("Error: allocating twice!!\n");
+        return 1;
+    }
+    else if(allocL1Now){
+        //create frame for page
+        void *newPage = MMU_pf_alloc();
+        memset1(newPage, 0, PAGE_SIZE);
+        *(uint64_t*)(l1_entry) = (uint64_t)newPage;
+        l1_entry->present = 1;
+        l1_entry->allocated = 1;
+        l1_entry->rw = 1;
+    }
+
     asm ("mov %0, %%cr3" :: "r"(&P4));
+    return 0;
 }
 
 void *MMU_pf_alloc()
@@ -364,7 +277,7 @@ void MMU_pf_free(void *pf)
 void *MMU_alloc_page()
 {
     void *ret = nextVirtualPage;
-    setAllocated(nextVirtualPage, &P4);
+    setAllocated(nextVirtualPage, &P4, 0);
     nextVirtualPage += PAGE_SIZE;
     return ret;
 }
@@ -374,7 +287,7 @@ void *MMU_alloc_pages(int num)
     int i;
     void *ret = nextVirtualPage;
     for(i = 0; i < num; i++){
-        setAllocated(nextVirtualPage, &P4);
+        setAllocated(nextVirtualPage, &P4, 0);
         nextVirtualPage += PAGE_SIZE;
     }
     return ret;
@@ -406,31 +319,7 @@ void pageFaultISR(int interrupt, int error, void *data)
     asm ("mov %%cr2, %0": "=r"(virtualAddr));
     asm ("mov %%cr3, %0": "=r"(pageTableAddr));
 
-    printk("Page fault address: %lx\n", virtualAddr);
-
-    struct PageTable_L1 *l1 = getPageTableL1((void*)virtualAddr, &P4);
-    uint64_t l1Index = (virtualAddr >> 12) & 0x1FF; //bits 12-20
-    if(l1 == 0){
-        printk("error getting page table\n");
-        asm ("hlt");
-        return;
-    }
-    struct P1_entry *l1_entry = &l1->entries[l1Index];
-    
-    if(l1_entry->allocated){
-        if(l1_entry->present){
-            printk("this shouldn't happen\n");
-            asm ("hlt");
-        }
-        void *backingPage = MMU_pf_alloc();
-        memset1(backingPage, 0, PAGE_SIZE);
-        *(uint64_t *)(l1_entry) = (uint64_t)backingPage;
-        l1_entry->present = 1;
-        l1_entry->allocated = 1;
-        l1_entry->rw = 1;
-        asm ("mov %0, %%cr3" :: "r"(&P4));
-    }
-    else{
+    if(setAllocated((void*)virtualAddr, &P4, 1)){
         printPageFaultError(virtualAddr, pageTableAddr, error);
         asm ("hlt");
     }

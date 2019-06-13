@@ -147,6 +147,6 @@ isr_error:
     mov rdi, [next_proc]
     cmp rsi, rdi
     jne switch_contexts
-    pop rsi
     pop rdi 
+    pop rsi
     iretq
