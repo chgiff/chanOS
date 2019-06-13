@@ -325,18 +325,18 @@ void setAllocated(void * virtualPointer, struct PageTable_L4 *l4)
     //l1 is set available but the page isn't allocated yet
 
     //DEBUG
-    if(!l1_entry->present){
-        //create frame for page
-        void *newPage = MMU_pf_alloc();
-        memset1(newPage, 0, PAGE_SIZE);
-        *(uint64_t*)(l1_entry) = (uint64_t)newPage;
-        l1_entry->present = 1;
-        l1_entry->allocated = 1;
-        l1_entry->rw = 1;
-    }
-    else{
-        printk("Error: allocating twice!!\n");
-    }
+    // if(!l1_entry->present){
+    //     //create frame for page
+    //     void *newPage = MMU_pf_alloc();
+    //     memset1(newPage, 0, PAGE_SIZE);
+    //     *(uint64_t*)(l1_entry) = (uint64_t)newPage;
+    //     l1_entry->present = 1;
+    //     l1_entry->allocated = 1;
+    //     l1_entry->rw = 1;
+    // }
+    // else{
+    //     printk("Error: allocating twice!!\n");
+    // }
     asm ("mov %0, %%cr3" :: "r"(&P4));
 }
 
@@ -407,13 +407,12 @@ void pageFaultISR(int interrupt, int error, void *data)
     asm ("mov %%cr3, %0": "=r"(pageTableAddr));
 
     printk("Page fault address: %lx\n", virtualAddr);
-    return;
 
     struct PageTable_L1 *l1 = getPageTableL1((void*)virtualAddr, &P4);
-    uint64_t l1Index = (virtualAddr >> 12) & 0x1F; //bits 12-20
+    uint64_t l1Index = (virtualAddr >> 12) & 0x1FF; //bits 12-20
     if(l1 == 0){
-        // printk("error getting page table\n");
-        // asm ("hlt");
+        printk("error getting page table\n");
+        asm ("hlt");
         return;
     }
     struct P1_entry *l1_entry = &l1->entries[l1Index];
@@ -425,7 +424,7 @@ void pageFaultISR(int interrupt, int error, void *data)
         }
         void *backingPage = MMU_pf_alloc();
         memset1(backingPage, 0, PAGE_SIZE);
-        *(uint64_t *)l1_entry = (uint64_t)backingPage;
+        *(uint64_t *)(l1_entry) = (uint64_t)backingPage;
         l1_entry->present = 1;
         l1_entry->allocated = 1;
         l1_entry->rw = 1;

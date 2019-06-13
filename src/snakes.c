@@ -415,7 +415,8 @@ static int noop_func(int i)
 }
 
 static void delay() {
-   for (int i = 0; i < 0xFFFFF; i++)
+   int i;
+   for (i = 0; i < 0xFFFFF; i++)
       noop_func(10);
 #if 0
   /*

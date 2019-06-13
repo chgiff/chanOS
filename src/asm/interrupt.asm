@@ -87,7 +87,27 @@ idt_load:
 
 isr_normal:
     push rsi
+
+    push r10
+    push r11
+    push rdi
+    push rsi
+    push rdx
+    push rcx
+    push r8
+    push r9
+    push rax
     call isr_c
+    pop rax
+    pop r9
+    pop r8
+    pop rcx
+    pop rdx
+    pop rsi
+    pop rdi
+    pop r11
+    pop r10
+
     mov rsi, [curr_proc]
     mov rdi, [next_proc]
     cmp rsi, rdi
@@ -97,7 +117,26 @@ isr_normal:
     iretq
 
 isr_error:
+    push r10
+    push r11
+    push rdi
+    push rsi
+    push rdx
+    push rcx
+    push r8
+    push r9
+    push rax
     call isr_c
+    pop rax
+    pop r9
+    pop r8
+    pop rcx
+    pop rdx
+    pop rsi
+    pop rdi
+    pop r11
+    pop r10
+
     pop rsi
     pop rdi
     add rsp, 8
